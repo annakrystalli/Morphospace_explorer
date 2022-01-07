@@ -1,12 +1,13 @@
-
-#setwd("~/Downloads/shiny-apps/Morphospace_explorer/")
-
 library(RColorBrewer) # # # Install these packages
 library(shiny)
 library(geomorph)
 library(ggvis)
 library(dplyr)
 library(rgl)
+
+
+#source("R/morphospace_plot.R")
+source("R/3d_beak.R")
 
 # Plotting pars:
 so <- readRDS("data/PlottingPars_SideOn.rds")
@@ -34,31 +35,34 @@ scores$Group <- factor(scores$Group, levels=c("All species", "Selected"))
 baseGroup <- scores$Group; names(baseGroup) <- scores$Spp
 familyNames <- sort(scores$Family)
 genusNames <- sort(scores$Genus)
-speciesNames <- sort(scores$Spp2)
+speciesNames <- sort(setNames(scores$Species, gsub("_", " ", scores$Species)))
+
+
+data_3d <- data_3d_get(coords)
 
 # scores$Group <- ifelse(scores$Order=="PASSERIFORMES", "Passerines", ifelse(scores$Order=="ANSERIFORMES","Ducks & geese", ifelse(scores$Order=="APODIFORMES", "Hummingbirds & swifts", ifelse(scores$Order=="PSITTACIFORMES","Parrots","Others"))))
 # scores$Group <- factor(scores$Group, levels=c("Ducks & geese","Hummingbirds & swifts","Parrots","Passerines","Others","Selected"))
 
 # Plotting cols:
 #cols <- c(brewer.pal(9, name="Set1")[9], brewer.pal(9, name="Set1")[4], brewer.pal(9, name="Set1")[2], brewer.pal(9, name="Set1")[1], brewer.pal(9, name="Set1")[5], brewer.pal(9, name="Set1")[3])
-fcols <- cols <- c(brewer.pal(9, name="Set1"))
+fcols <- cols <- c(RColorBrewer::brewer.pal(9, name="Set1"))
 #display.brewer.pal(10, "Set1")
 
 # Create reative values object:
 values <- reactiveValues()
 values$clickspp <- NULL
 values$groups <- scores$Group
+values$species <- NULL
 
-# Function for displaying hover names:
 clickFunc <- function(x) {
-	if(is.null(x)) return(NULL)
-	values$clickspp <- x$Spp
-	# temp <- values$group
-	# temp[scores$Spp==x$Spp] <- "Selected"
-	# values$groups <- as.factor(temp)
-	paste0("<b>", scores$English[scores$Spp==x$Spp], "</b><br><i>", gsub("_"," ",x$Spp), "</i><br><a href='https://www.google.com/search?q=", gsub("_"," ",x$Spp), "' target='_blank'>Search this species</a>") # Add tbm=isch& for image search
+    if(is.null(x)) return(NULL)
+    values$clickspp <- x$Spp
+    cat(values$clickspp)
+    # temp <- values$group
+    # temp[scores$Spp==x$Spp] <- "Selected"
+    # values$groups <- as.factor(temp)
+    paste0("<b>", scores$English[scores$Spp==x$Spp], "</b><br><i>", gsub("_"," ",x$Spp), "</i><br><a href='https://www.google.com/search?q=", gsub("_"," ",x$Spp), "' target='_blank'>Search this species</a>") # Add tbm=isch& for image search
 }
-
 ############################################################
 
 ##########
@@ -139,54 +143,8 @@ server <- function(input, output, clientData, session) {
 
   	output$morphoPlotSide <- rgl::renderRglwidget({
 
-    	A <- coords
-    	axis1 <- which(colnames(scores)==input$xaxis)-1 # Account for Spp col
-    	axis2 <- which(colnames(scores)==input$yaxis)-1 # Account for Spp col
-    	k <- dim(A)[2]; p <- dim(A)[1]; n <- dim(A)[3]
-	   	ref <- mshape(A)
-    	x <- two.d.array(A)
-    	pc.res <- prcomp(x)
-    	pcdata <- pc.res$x
-    	pc.val.1 <- rep(0, dim(pcdata)[2])
-		pc.val.1[axis1] <- input$xval
-		pc.val.1[axis2] <- input$yval
-
-		if (!is.null(values$clickspp)) {
-    		values$pc.val.2 <- pcdata[substr(rownames(pcdata), 1, nchar(rownames(pcdata))-2)==values$clickspp,]
-    	} else {
-    		values$pc.val.2 <- NULL
-    	}
-		if (input$spp1 != "Search here...") {
-		    values$pc.val.3 <- pcdata[substr(rownames(pcdata), 1, nchar(rownames(pcdata))-2)==gsub(" ", "_",input$spp1),]
-		} else {
-		    values$pc.val.3 <- NULL
-		}
-		shape1 <- arrayspecs(as.matrix(pc.val.1 %*% (t(pc.res$rotation))),p,k)[,,1] + ref
-		if (is.null(values$pc.val.2) & is.null(values$pc.val.3)) {
-			par3d(so)
-			for (i in 1:nrow(sliders)) {
-				segments3d(rbind(shape1[sliders[i,1],], shape1[sliders[i,2],]), lwd=1, color="black", alpha=0.5, box=FALSE, axes=FALSE, xlab="", ylab="", zlab="")
-			}
-		} else {
-			par3d(so)
-			for (i in 1:nrow(sliders)) {
-				segments3d(rbind(shape1[sliders[i,1],], shape1[sliders[i,2],]), lwd=1, color="black", alpha=0.5, box=FALSE, axes=FALSE, xlab="", ylab="", zlab="")
-			}
-            if (!is.null(values$pc.val.2)) {
-                shape2 <- arrayspecs(as.matrix(values$pc.val.2 %*% (t(pc.res$rotation))),p,k)[,,1] + ref
-                par3d(so)
-                for (i in 1:nrow(sliders)) {
-                    segments3d(rbind(shape2[sliders[i,1],], shape2[sliders[i,2],]), lwd=3, color=brewer.pal(9, name="Set1")[4], box=FALSE, axes=FALSE, xlab="", ylab="", zlab="")
-                }
-            }
-			try(if (!is.null(values$pc.val.3)) {
-			    shape3 <- arrayspecs(as.matrix(values$pc.val.3 %*% (t(pc.res$rotation))),p,k)[,,1] + ref
-			    par3d(so)
-			    for (i in 1:nrow(sliders)) {
-			        segments3d(rbind(shape3[sliders[i,1],], shape3[sliders[i,2],]), lwd=3, color=brewer.pal(9, name="Set1")[3], box=FALSE, axes=FALSE, xlab="", ylab="", zlab="")
-			    }
-			}, silent=T)
-		}
+  	    plot_beaks(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
+  	               yval = input$yval, clickspp = input$clickspp, spp1 = input$spp1)
   	})
 }
 
