@@ -197,7 +197,7 @@ server <- function(input, output, clientData, session) {
 ######
 
 ui <- fluidPage(
-  titlePanel("MARKMYBRID-O-SPACE"),
+  titlePanel("MARKMYBIRD-O-SPACE"),
   HTML(paste0("<h4>Visualise and explore the position of ", dim(scores)[1], " bird species (", length(unique(scores$Genus)), " genera) in multidimensional bill morphospace using data crowdsourced from <a href='https://www.markmybird.org/' target='_blank'>MarkMyBird.org</a></h4>", sep="")),
   hr(),
   fluidRow(
