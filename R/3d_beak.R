@@ -23,12 +23,12 @@ beak_3d <- function(beak_data, data_3d, sliders, colour = cols[4], lwd = 3, alph
     shape <- geomorph::arrayspecs(
         beak_data %*% (t(data_3d$rotation)), 
         data_3d$p, data_3d$k)[,,1] + data_3d$ref
-    #rgl::par3d(so)
+    
     for (i in 1:nrow(sliders)) {
         segments3d(rbind(shape[sliders[i,1],], 
                          shape[sliders[i,2],]), 
                    lwd = lwd, color = colour, box=FALSE, axes=FALSE, 
-                   xlab="", ylab="", zlab="")
+                   xlab="", ylab="", zlab="", alpha = alpha)
     }
 }
 
@@ -55,7 +55,7 @@ plot_ref_beak <- function(data_3d, xaxis = "PC1", yaxis = "PC2", xval = 0, yval 
     pca_ref[yaxis] <- yval
     
     # Plot beaks
-    beak_3d(pca_ref, data_3d, sliders, colour = colour, lwd = 1, alpha = 0.3)
+    beak_3d(pca_ref, data_3d, sliders, colour = colour, lwd = 1, alpha = 0.2)
     
     cat("pca_ref:",pca_ref, "\n\n")
 }
