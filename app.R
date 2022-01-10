@@ -75,19 +75,7 @@ clickFunc <- function(x) {
 ##########
 
 server <- function(input, output, clientData, session) {
-# 
-#     selected_species <- reactive({
-#         current_selection <- c(input$spp1[input$spp1 != "Search here..."], 
-#                                values$clickspp)
-#         
-#         if(length(current_selection) == 0){NULL}else{
-#             last_selected <- current_selection[!current_selection %in% isolate(values$last_selection)]
-#             ordered_current_selection <- c(isolate(values$last_selection), last_selected)
-#             ordered_current_selection
-#         }
-#     })
 
-    
 	observe({
 		updateSliderInput(session, "xval", label = "X value:", min=round(min(scores[,input$xaxis]),2), max=round(max(scores[,input$xaxis]),2), value=0)
 		updateSliderInput(session, "yval", label = "Y value:", min=round(min(scores[,input$yaxis]),2), max=round(max(scores[,input$yaxis]),2), value=0)
@@ -122,8 +110,13 @@ server <- function(input, output, clientData, session) {
 	    
 	    rgl::close3d()
 	    
+	    rgl::par3d(so)
+	    
 	    plot_ref_beak(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
 	                  yval = input$yval, sliders = sliders, colour = "black")
+	})
+	
+	re_add_selected_3d_beaks <- eventReactive(c(input$xval, input$yval), {
 	    
 	    if(!is.null(values$selected)){
 	        for(i in seq_along(values$selected)){
@@ -131,14 +124,7 @@ server <- function(input, output, clientData, session) {
 	                               sliders = sliders, colour = plot_cols[i %% 8])
 	        }
 	    }
-
-	})
-	
-	readd_selected_3d_beaks <- eventReactive(values$last_selection, {
-	    for(i in seq_along(values$selected)){
-	    plot_selected_beak(data_3d, selected_species = values$selected[i],
-	                       sliders = sliders, colour = plot_cols[i %% 8])
-	    }
+	    
 	})
 	
 	add_selected_3d_beak <- eventReactive(values$last_selection, {
@@ -212,10 +198,12 @@ server <- function(input, output, clientData, session) {
   	    #cat("selected:", values$selected, "\n\n")
   	    
   	    open_3d_ref_beak()
-
+  	    re_add_selected_3d_beaks() 
+  	    
   	    add_selected_3d_beak()
-
-  	    rgl::rglwidget(webgl = TRUE)
+  	    
+  	    rgl::rglwidget(webgl = TRUE, width = 100, height = 100)
+  	    
  
   	})
 }
@@ -247,18 +235,18 @@ ui <- fluidPage(
   		)
   	),
   	column(6,
-  		br(), br(), br(),
+  		br(), 
   		ggvisOutput("plot1"),
-  		selectizeInput("fam1", label="Family", c("Search here...", familyNames)),
-  		selectizeInput("gen1", label="Genus", c("Search here...", genusNames)),
-  		selectizeInput("spp1", label="Species", c("Search here...", speciesNames))
-  	),
-  	column(3,
-  		br(), br(),
   		h3("Bill viewer"),
   		wellPanel(
-  		rgl::rglwidgetOutput("morphoPlotSide")
+  		    rgl::rglwidgetOutput("morphoPlotSide", width = 400, height = 250)
   		)
+  	),
+  	column(3,
+  	       
+  	       selectizeInput("fam1", label="Family", c("Search here...", familyNames)),
+  	       selectizeInput("gen1", label="Genus", c("Search here...", genusNames)),
+  	       selectizeInput("spp1", label="Species", c("Search here...", speciesNames))
   	)
   ),
   hr()
