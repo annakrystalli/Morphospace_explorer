@@ -32,31 +32,31 @@ beak_3d <- function(beak_data, data_3d, sliders, colour = cols[4], lwd = 3, alph
     }
 }
 
-plot_beaks <- function(data_3d, xaxis = "PC1", yaxis = "PC2", xval = 0, yval = 0, 
-                       selected_species = NULL, sliders, palette = plot_cols) {
+plot_selected_beak <- function(data_3d, selected_species = NULL, all_selected = NULL,
+                               sliders, colour = plot_cols[1]) {
+    
+    if (!is.null(selected_species)) {
+        pca_spp <- data_3d$pca_data[selected_species, , drop = FALSE]
+        beak_3d(pca_spp, data_3d, sliders, colour = colour, 
+                alpha = 0.75, lwd = 2)
+        
+        cat("pca_spp:",pca_spp, "\n\n")
+    }
+    cat("==================END====================", "\n\n")
 
+}
+
+plot_ref_beak <- function(data_3d, xaxis = "PC1", yaxis = "PC2", xval = 0, yval = 0, 
+                    sliders, colour = "black") {
+    
     pca_ref <- stats::setNames(rep(0, ncol(data_3d$pca_data)), 
-                                colnames(data_3d$pca_data))
+                               colnames(data_3d$pca_data))
     pca_ref[xaxis] <- xval
     pca_ref[yaxis] <- yval
     
     # Plot beaks
-    beak_3d(pca_ref, data_3d, sliders, colour = "black", lwd = 1, alpha = 0.3)
+    beak_3d(pca_ref, data_3d, sliders, colour = colour, lwd = 1, alpha = 0.3)
     
-    if (!is.null(selected_species)) {
-        pca_spp <- data_3d$pca_data[selected_species, , drop = FALSE]
-        for(i in 1:nrow(pca_spp)){
-        beak_3d(pca_spp[i, ], data_3d, sliders, colour = palette[i], 
-                alpha = 0.75, lwd = 2)
-        }
-    }
-    
-
     cat("pca_ref:",pca_ref, "\n\n")
-    cat("pca_spp:",pca_spp, "\n\n")
-    cat("==================END====================", "\n\n")
-    rglwidget(webgl = TRUE)
 }
-
-
 

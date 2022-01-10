@@ -5,6 +5,7 @@ library(ggvis)
 library(dplyr)
 library(rgl)
 
+options(rgl.printRglwidget = TRUE)
 
 #source("R/morphospace_plot.R")
 source("R/3d_beak.R")
@@ -32,7 +33,8 @@ scores$Order <- taxo$IOCOrder[match(scores$Spp, taxo$TipLabel)]
 scores$Group <- "All species"
 scores$Group <- factor(scores$Group, levels=c("All species", "Selected"))
 
-baseGroup <- scores$Group; names(baseGroup) <- scores$Spp
+baseGroup <- scores$Group
+names(baseGroup) <- scores$Spp
 familyNames <- sort(scores$Family)
 genusNames <- sort(scores$Genus)
 speciesNames <- sort(setNames(scores$Species, gsub("_", " ", scores$Species)))
@@ -46,18 +48,21 @@ data_3d <- data_3d_get(coords)
 # Plotting cols:
 #cols <- c(brewer.pal(9, name="Set1")[9], brewer.pal(9, name="Set1")[4], brewer.pal(9, name="Set1")[2], brewer.pal(9, name="Set1")[1], brewer.pal(9, name="Set1")[5], brewer.pal(9, name="Set1")[3])
 fcols <- cols <- c(RColorBrewer::brewer.pal(9, name="Set1"))
+
+plot_cols <- c(RColorBrewer::brewer.pal(8, name="Dark2"))
 #display.brewer.pal(10, "Set1")
 
 # Create reative values object:
 values <- reactiveValues()
 values$clickspp <- NULL
 values$groups <- scores$Group
-values$species <- NULL
+values$last_selection <- NULL
+values$selected <- NULL
+values$plot3d <- NULL
 
 clickFunc <- function(x) {
     if(is.null(x)) return(NULL)
     values$clickspp <- x$Spp
-    cat(values$clickspp)
     # temp <- values$group
     # temp[scores$Spp==x$Spp] <- "Selected"
     # values$groups <- as.factor(temp)
@@ -70,7 +75,19 @@ clickFunc <- function(x) {
 ##########
 
 server <- function(input, output, clientData, session) {
+# 
+#     selected_species <- reactive({
+#         current_selection <- c(input$spp1[input$spp1 != "Search here..."], 
+#                                values$clickspp)
+#         
+#         if(length(current_selection) == 0){NULL}else{
+#             last_selected <- current_selection[!current_selection %in% isolate(values$last_selection)]
+#             ordered_current_selection <- c(isolate(values$last_selection), last_selected)
+#             ordered_current_selection
+#         }
+#     })
 
+    
 	observe({
 		updateSliderInput(session, "xval", label = "X value:", min=round(min(scores[,input$xaxis]),2), max=round(max(scores[,input$xaxis]),2), value=0)
 		updateSliderInput(session, "yval", label = "Y value:", min=round(min(scores[,input$yaxis]),2), max=round(max(scores[,input$yaxis]),2), value=0)
@@ -88,6 +105,48 @@ server <- function(input, output, clientData, session) {
 		})
   	})
 
+	observeEvent(c(input$spp1, values$clickspp), {
+	    species_inputs <- c(input$spp1[input$spp1 != "Search here..."], 
+	                        values$clickspp)
+	    
+	    if(length(species_inputs) > 0){
+	        select_diff <- species_inputs[!species_inputs %in% values$selected]
+	        if(length(select_diff) > 0){
+	        values$last_selection <- select_diff
+	        values$selected <- c(values$selected, values$last_selection)
+	        }
+	    }
+	})
+	
+	open_3d_ref_beak <- eventReactive(c(input$xval, input$yval), {
+	    
+	    rgl::close3d()
+	    
+	    plot_ref_beak(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
+	                  yval = input$yval, sliders = sliders, colour = "black")
+	    
+	    if(!is.null(values$selected)){
+	        for(i in seq_along(values$selected)){
+	            plot_selected_beak(data_3d, selected_species = values$selected[i],
+	                               sliders = sliders, colour = plot_cols[i %% 8])
+	        }
+	    }
+
+	})
+	
+	readd_selected_3d_beaks <- eventReactive(values$last_selection, {
+	    for(i in seq_along(values$selected)){
+	    plot_selected_beak(data_3d, selected_species = values$selected[i],
+	                       sliders = sliders, colour = plot_cols[i %% 8])
+	    }
+	})
+	
+	add_selected_3d_beak <- eventReactive(values$last_selection, {
+	    
+	    plot_selected_beak(data_3d, selected_species = values$last_selection,
+	               sliders = sliders, colour = plot_cols[length(values$selected) %% 8])
+	})
+	
 	# Plot the morphospace:
 	vis <- reactive({
 
@@ -97,36 +156,41 @@ server <- function(input, output, clientData, session) {
 
 		chosenfams <- c(input$fam1,input$gen1,input$spp1); names(chosenfams) <- c(1:3)
   		chosenfams <- chosenfams[chosenfams != "Search here..."]
-  		temp2 <- as.character(baseGroup)
+  		flabels <- factor(as.character(baseGroup), levels=c("All species"))
+  		slabels <- factor(as.character(baseGroup), levels=c("All species"))
+  		fcols <- cols[9]
+  		scols <- cols[9]
+  		
   		if (length(chosenfams) > 0) {
   			for (i in 1:length(chosenfams)) {
   				if (chosenfams[i] %in% scores$Family) {
-  					temp2[scores$Family==chosenfams[i]] <- chosenfams[i]
+  				    flabels[scores$Family==chosenfams[i]] <- chosenfams[i]
   				}
   				if (chosenfams[i] %in% scores$Genus) {
-  					temp2[scores$Genus==chosenfams[i]] <- chosenfams[i]
+  				    flabels[scores$Genus==chosenfams[i]] <- chosenfams[i]
   				}
   				if (chosenfams[i] %in% scores$Spp2) {
-  					temp2[scores$Spp2==chosenfams[i]] <- chosenfams[i]
+  				    flabels[scores$Spp2==chosenfams[i]] <- chosenfams[i]
   				}
   			}
-  			temp2 <- factor(temp2, levels=c("All species", "Selected", chosenfams))
-  			fcols <- cols[c(9,4,c(1,2,3,5,6,7,8)[as.numeric(names(chosenfams))])]
-  		} else {
-  			temp2 <- factor(temp2, levels=c("All species", "Selected"))
-  			fcols <- cols[c(9,4)]
+  		    flabels <- factor(flabels, levels=c(levels(flabels), chosenfams))
+  			fcols <- c(fcols, cols[c(1,2,3,5,6,7,8)[as.numeric(names(chosenfams))]])
   		}
   		if (!is.null(values$clickspp)) {
-    		 temp2[scores$Spp==values$clickspp] <- "Selected"
+  		     slabels[names(baseGroup) == values$clickspp] <- values$clickspp
+    		 slabels <- factor(slabels, levels=c(levels(slabels), values$clickspp))
+    		 scols <- c(scols, plot_cols[seq_along(values$clickspp)])
     	}
-    	values$groups <- as.factor(temp2)
-
-		scores$Group <- values$groups
+    	values$fgroups <- flabels
+    	values$sgroups <- slabels
+    	
+		scores$FGroup <- values$fgroups
+		scores$SGroup <- values$sgroups
 
 		scores %>%
 			ggvis(x = prop("x", as.symbol(input$xaxis)), y = prop("y", as.symbol(input$yaxis))) %>%
 			layer_points(size = ~LogCenSize, size.hover := 300,
-				fillOpacity := 0.2, fillOpacity.hover := 0.2, key := ~Spp, stroke = ~Group, fill = ~Group) %>%
+				fillOpacity := 0.2, fillOpacity.hover := 0.2, key := ~Spp, stroke = ~SGroup, fill = ~FGroup) %>%
 			layer_paths(data=vert, x=~X, y=~Y, stroke:="red", strokeWidth:=3, strokeOpacity:=0.5) %>%
 			layer_paths(data=hori, x=~X, y=~Y, stroke:="red", strokeWidth:=3, strokeOpacity:=0.5) %>%
 			layer_points(data=pnt, x=~X, y=~Y, stroke:="red", size := 50, fillOpacity := 0, opacity:=0.5, strokeWidth:=3) %>%
@@ -135,16 +199,24 @@ server <- function(input, output, clientData, session) {
 			add_axis("y", title = input$yaxis) %>%
 			set_options(height=500, duration=0) %>%
 			add_legend("size", title = "Bill size (log)", properties = legend_props(legend=list(y=120))) %>%
-			scale_nominal("stroke", range=fcols) %>%
-			scale_nominal("fill", range=fcols)
+			scale_nominal("stroke", range=c(cols[9], scols)) %>%
+			scale_nominal("fill", range=c(cols[9], fcols))
 	})
 
 	vis %>% bind_shiny("plot1")
 
   	output$morphoPlotSide <- rgl::renderRglwidget({
+  	    
+  	    #cat("clickspp:", values$clickspp, "\n\n")
+  	    #cat("spp1:", input$spp1, "\n\n")
+  	    #cat("selected:", values$selected, "\n\n")
+  	    
+  	    open_3d_ref_beak()
 
-  	    plot_beaks(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
-  	               yval = input$yval, clickspp = input$clickspp, spp1 = input$spp1)
+  	    add_selected_3d_beak()
+
+  	    rgl::rglwidget(webgl = TRUE)
+ 
   	})
 }
 
@@ -184,7 +256,9 @@ ui <- fluidPage(
   	column(3,
   		br(), br(),
   		h3("Bill viewer"),
+  		wellPanel(
   		rgl::rglwidgetOutput("morphoPlotSide")
+  		)
   	)
   ),
   hr()
