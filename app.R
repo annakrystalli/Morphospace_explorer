@@ -193,16 +193,17 @@ server <- function(input, output, clientData, session) {
 
   	output$morphoPlotSide <- rgl::renderRglwidget({
   	    
-  	    #cat("clickspp:", values$clickspp, "\n\n")
-  	    #cat("spp1:", input$spp1, "\n\n")
-  	    #cat("selected:", values$selected, "\n\n")
-  	    
+  	    # open new 3d device (re-evaluated when morphospace params change)
   	    open_3d_ref_beak()
+  	    # add beaks of any already selected species (run when morphospace params change 
+  	    # and species already selected)
   	    re_add_selected_3d_beaks() 
   	    
+  	    # Add the beak of last selected species
   	    add_selected_3d_beak()
   	    
-  	    rgl::rglwidget(webgl = TRUE, width = 100, height = 100)
+  	    # embed RGL scene output into html 
+  	    rgl::rglwidget(webgl = TRUE)
   	    
  
   	})
