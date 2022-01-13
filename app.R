@@ -75,138 +75,138 @@ clickFunc <- function(x) {
 ##########
 
 server <- function(input, output, clientData, session) {
-
-	observe({
-		updateSliderInput(session, "xval", label = "X value:", min=round(min(scores[,input$xaxis]),2), max=round(max(scores[,input$xaxis]),2), value=0)
-		updateSliderInput(session, "yval", label = "Y value:", min=round(min(scores[,input$yaxis]),2), max=round(max(scores[,input$yaxis]),2), value=0)
-	})
-
-	observeEvent(input$goButton, {
-		values$clickspp <- NULL
-		values$groups <- baseGroup
-		observe({
-			updateSliderInput(session, "xval", label = "X value:", min=round(min(scores[,input$xaxis]),2), max=round(max(scores[,input$xaxis]),2), value=0)
-			updateSliderInput(session, "yval", label = "Y value:", min=round(min(scores[,input$yaxis]),2), max=round(max(scores[,input$yaxis]),2), value=0)
-			updateSelectInput(session, "fam1", label="Select family", c("Search here...", familyNames), "Search here...")
-			updateSelectInput(session, "gen1", label="Select genus", c("Search here...", genusNames), "Search here...")
-			updateSelectInput(session, "spp1", label="Select species", c("Search here...", speciesNames), "Search here...")
-		})
-  	})
-
-	observeEvent(c(input$spp1, values$clickspp), {
-	    species_inputs <- c(input$spp1[input$spp1 != "Search here..."], 
-	                        values$clickspp)
-	    
-	    if(length(species_inputs) > 0){
-	        select_diff <- species_inputs[!species_inputs %in% values$selected]
-	        if(length(select_diff) > 0){
-	        values$last_selection <- select_diff
-	        values$selected <- c(values$selected, values$last_selection)
-	        }
-	    }
-	})
-	
-	open_3d_ref_beak <- eventReactive(c(input$xval, input$yval), {
-	    
-	    rgl::close3d()
-	    
-	    rgl::par3d(so)
-	    
-	    plot_ref_beak(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
-	                  yval = input$yval, sliders = sliders, colour = "black")
-	})
-	
-	re_add_selected_3d_beaks <- eventReactive(c(input$xval, input$yval), {
-	    
-	    if(!is.null(values$selected)){
-	        for(i in seq_along(values$selected)){
-	            plot_selected_beak(data_3d, selected_species = values$selected[i],
-	                               sliders = sliders, colour = plot_cols[i %% 8])
-	        }
-	    }
-	    
-	})
-	
-	add_selected_3d_beak <- eventReactive(values$last_selection, {
-	    
-	    plot_selected_beak(data_3d, selected_species = values$last_selection,
-	               sliders = sliders, colour = plot_cols[length(values$selected) %% 8])
-	})
-	
-	# Plot the morphospace:
-	vis <- reactive({
-
-		vert <- data.frame(X=c(input$xval,input$xval), Y=c(min(scores[,input$yaxis]),max(scores[,input$yaxis])))
-		hori <- data.frame(X=c(min(scores[,input$xaxis]),max(scores[,input$xaxis])), Y=c(input$yval,input$yval))
-		pnt <- data.frame(X=c(input$xval),Y=c(input$yval))
-
-		chosenfams <- c(input$fam1,input$gen1,input$spp1); names(chosenfams) <- c(1:3)
-  		chosenfams <- chosenfams[chosenfams != "Search here..."]
-  		flabels <- factor(as.character(baseGroup), levels=c("All species"))
-  		slabels <- factor(as.character(baseGroup), levels=c("All species"))
-  		fcols <- cols[9]
-  		scols <- cols[9]
-  		
-  		if (length(chosenfams) > 0) {
-  			for (i in 1:length(chosenfams)) {
-  				if (chosenfams[i] %in% scores$Family) {
-  				    flabels[scores$Family==chosenfams[i]] <- chosenfams[i]
-  				}
-  				if (chosenfams[i] %in% scores$Genus) {
-  				    flabels[scores$Genus==chosenfams[i]] <- chosenfams[i]
-  				}
-  				if (chosenfams[i] %in% scores$Spp2) {
-  				    flabels[scores$Spp2==chosenfams[i]] <- chosenfams[i]
-  				}
-  			}
-  		    flabels <- factor(flabels, levels=c(levels(flabels), chosenfams))
-  			fcols <- c(fcols, cols[c(1,2,3,5,6,7,8)[as.numeric(names(chosenfams))]])
-  		}
-  		if (!is.null(values$selected)) {
-  		     slabels[names(baseGroup) == values$selected] <- values$selected
-    		 slabels <- factor(slabels, levels=c(levels(slabels), values$selected))
-    		 scols <- c(scols, plot_cols[seq_along(values$selected)])
-    	}
-    	values$fgroups <- flabels
-    	values$sgroups <- slabels
-    	
-		scores$FGroup <- values$fgroups
-		scores$SGroup <- values$sgroups
-
-		scores %>%
-			ggvis(x = prop("x", as.symbol(input$xaxis)), y = prop("y", as.symbol(input$yaxis))) %>%
-			layer_points(size = ~LogCenSize, size.hover := 300,
-				fillOpacity := 0.2, fillOpacity.hover := 0.2, key := ~Spp, stroke = ~SGroup, fill = ~FGroup) %>%
-			layer_paths(data=vert, x=~X, y=~Y, stroke:="red", strokeWidth:=3, strokeOpacity:=0.5) %>%
-			layer_paths(data=hori, x=~X, y=~Y, stroke:="red", strokeWidth:=3, strokeOpacity:=0.5) %>%
-			layer_points(data=pnt, x=~X, y=~Y, stroke:="red", size := 50, fillOpacity := 0, opacity:=0.5, strokeWidth:=3) %>%
-			add_tooltip(clickFunc, "click") %>%
-			add_axis("x", title = input$xaxis) %>%
-			add_axis("y", title = input$yaxis) %>%
-			set_options(height=500, duration=0) %>%
-			add_legend("size", title = "Bill size (log)", properties = legend_props(legend=list(y=120))) %>%
-			scale_nominal("stroke", range= if(length(scols) == 1){rep(scols, 2)}else{scols}) %>%
-			scale_nominal("fill", range=if(length(fcols) == 1){rep(fcols, 2)}else{fcols})
-	})
-
-	vis %>% bind_shiny("plot1")
-
-  	output$morphoPlotSide <- rgl::renderRglwidget({
-  	    
-  	    # open new 3d device (re-evaluated when morphospace params change)
-  	    open_3d_ref_beak()
-  	    # add beaks of any already selected species (run when morphospace params change 
-  	    # and species already selected)
-  	    re_add_selected_3d_beaks() 
-  	    
-  	    # Add the beak of last selected species
-  	    add_selected_3d_beak()
-  	    
-  	    # embed RGL scene output into html 
-  	    rgl::rglwidget(webgl = TRUE)
-  	    
- 
-  	})
+    
+    observe({
+        updateSliderInput(session, "xval", label = "X value:", min=round(min(scores[,input$xaxis]),2), max=round(max(scores[,input$xaxis]),2), value=0)
+        updateSliderInput(session, "yval", label = "Y value:", min=round(min(scores[,input$yaxis]),2), max=round(max(scores[,input$yaxis]),2), value=0)
+    })
+    
+    observeEvent(input$goButton, {
+        values$clickspp <- NULL
+        values$groups <- baseGroup
+        observe({
+            updateSliderInput(session, "xval", label = "X value:", min=round(min(scores[,input$xaxis]),2), max=round(max(scores[,input$xaxis]),2), value=0)
+            updateSliderInput(session, "yval", label = "Y value:", min=round(min(scores[,input$yaxis]),2), max=round(max(scores[,input$yaxis]),2), value=0)
+            updateSelectInput(session, "fam1", label="Select family", c("Search here...", familyNames), "Search here...")
+            updateSelectInput(session, "gen1", label="Select genus", c("Search here...", genusNames), "Search here...")
+            updateSelectInput(session, "spp1", label="Select species", c("Search here...", speciesNames), "Search here...")
+        })
+    })
+    
+    observeEvent(c(input$spp1, values$clickspp), {
+        species_inputs <- c(input$spp1[input$spp1 != "Search here..."], 
+                            values$clickspp)
+        
+        if(length(species_inputs) > 0){
+            select_diff <- species_inputs[!species_inputs %in% values$selected]
+            if(length(select_diff) > 0){
+                values$last_selection <- select_diff
+                values$selected <- c(values$selected, values$last_selection)
+            }
+        }
+    })
+    
+    open_3d_ref_beak <- eventReactive(c(input$xval, input$yval), {
+        
+        rgl::close3d()
+        
+        rgl::par3d(so)
+        
+        plot_ref_beak(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
+                      yval = input$yval, sliders = sliders, colour = "black")
+    })
+    
+    re_add_selected_3d_beaks <- eventReactive(c(input$xval, input$yval), {
+        
+        if(!is.null(values$selected)){
+            for(i in seq_along(values$selected)){
+                plot_selected_beak(data_3d, selected_species = values$selected[i],
+                                   sliders = sliders, colour = plot_cols[i %% 8])
+            }
+        }
+        
+    })
+    
+    add_selected_3d_beak <- eventReactive(values$last_selection, {
+        
+        plot_selected_beak(data_3d, selected_species = values$last_selection,
+                           sliders = sliders, colour = plot_cols[length(values$selected) %% 8])
+    })
+    
+    # Plot the morphospace:
+    vis <- reactive({
+        
+        vert <- data.frame(X=c(input$xval,input$xval), Y=c(min(scores[,input$yaxis]),max(scores[,input$yaxis])))
+        hori <- data.frame(X=c(min(scores[,input$xaxis]),max(scores[,input$xaxis])), Y=c(input$yval,input$yval))
+        pnt <- data.frame(X=c(input$xval),Y=c(input$yval))
+        
+        chosenfams <- c(input$fam1,input$gen1,input$spp1); names(chosenfams) <- c(1:3)
+        chosenfams <- chosenfams[chosenfams != "Search here..."]
+        flabels <- factor(as.character(baseGroup), levels=c("All species"))
+        slabels <- factor(as.character(baseGroup), levels=c("All species"))
+        fcols <- cols[9]
+        scols <- cols[9]
+        
+        if (length(chosenfams) > 0) {
+            for (i in 1:length(chosenfams)) {
+                if (chosenfams[i] %in% scores$Family) {
+                    flabels[scores$Family==chosenfams[i]] <- chosenfams[i]
+                }
+                if (chosenfams[i] %in% scores$Genus) {
+                    flabels[scores$Genus==chosenfams[i]] <- chosenfams[i]
+                }
+                if (chosenfams[i] %in% scores$Spp2) {
+                    flabels[scores$Spp2==chosenfams[i]] <- chosenfams[i]
+                }
+            }
+            flabels <- factor(flabels, levels=c(levels(flabels), chosenfams))
+            fcols <- c(fcols, cols[c(1,2,3,5,6,7,8)[as.numeric(names(chosenfams))]])
+        }
+        if (!is.null(values$selected)) {
+            slabels[names(baseGroup) == values$selected] <- values$selected
+            slabels <- factor(slabels, levels=c(levels(slabels), values$selected))
+            scols <- c(scols, plot_cols[seq_along(values$selected)])
+        }
+        values$fgroups <- flabels
+        values$sgroups <- slabels
+        
+        scores$FGroup <- values$fgroups
+        scores$SGroup <- values$sgroups
+        
+        scores %>%
+            ggvis(x = prop("x", as.symbol(input$xaxis)), y = prop("y", as.symbol(input$yaxis))) %>%
+            layer_points(size = ~LogCenSize, size.hover := 300,
+                         fillOpacity := 0.2, fillOpacity.hover := 0.2, key := ~Spp, stroke = ~SGroup, fill = ~FGroup) %>%
+            layer_paths(data=vert, x=~X, y=~Y, stroke:="red", strokeWidth:=3, strokeOpacity:=0.5) %>%
+            layer_paths(data=hori, x=~X, y=~Y, stroke:="red", strokeWidth:=3, strokeOpacity:=0.5) %>%
+            layer_points(data=pnt, x=~X, y=~Y, stroke:="red", size := 50, fillOpacity := 0, opacity:=0.5, strokeWidth:=3) %>%
+            add_tooltip(clickFunc, "click") %>%
+            add_axis("x", title = input$xaxis) %>%
+            add_axis("y", title = input$yaxis) %>%
+            set_options(height=500, duration=0) %>%
+            add_legend("size", title = "Bill size (log)", properties = legend_props(legend=list(y=120))) %>%
+            scale_nominal("stroke", range= if(length(scols) == 1){rep(scols, 2)}else{scols}) %>%
+            scale_nominal("fill", range=if(length(fcols) == 1){rep(fcols, 2)}else{fcols})
+    })
+    
+    vis %>% bind_shiny("plot1")
+    
+    output$morphoPlotSide <- rgl::renderRglwidget({
+        
+        # open new 3d device (re-evaluated when morphospace params change)
+        open_3d_ref_beak()
+        # add beaks of any already selected species (run when morphospace params change 
+        # and species already selected)
+        re_add_selected_3d_beaks() 
+        
+        # Add the beak of last selected species
+        add_selected_3d_beak()
+        
+        # embed RGL scene output into html 
+        rgl::rglwidget(webgl = TRUE)
+        
+        
+    })
 }
 
 ############################################################
@@ -216,41 +216,50 @@ server <- function(input, output, clientData, session) {
 ######
 
 ui <- fluidPage(
-  titlePanel("MARKMYBIRD-O-SPACE"),
-  HTML(paste0("<h4>Visualise and explore the position of ", dim(scores)[1], " bird species (", length(unique(scores$Genus)), " genera) in multidimensional bill morphospace using data crowdsourced from <a href='https://www.markmybird.org/' target='_blank'>MarkMyBird.org</a></h4>", sep="")),
-  hr(),
-  fluidRow(
-  	column(3,
-  		wellPanel(
-  			h4("Axes of shape variation"),
-  			helpText("Select which axes of bill shape variation to explore"),
-  			selectInput("xaxis", label="X axis", names(scores)[grep("PC", names(scores))], selected="PC1"),
-  			selectInput("yaxis", label="Y axis", names(scores)[grep("PC", names(scores))], selected="PC2")
-  		),
-  		wellPanel(
-  			h4("Morphospace explorer"),
-  			helpText("Investigate how bill shape varies across the chosen region of morphospace"),
-  			sliderInput("xval", label="X value:", min=-0.5, max=0.5, value=0, round=-1),
-  			sliderInput("yval", label="Y value:", min=-0.5, max=0.5, value=0, round=-1),
-  			actionButton("goButton", "Reset all")
-  		)
-  	),
-  	column(6,
-  		br(), 
-  		ggvisOutput("plot1"),
-  		h3("Bill viewer"),
-  		wellPanel(
-  		    rgl::rglwidgetOutput("morphoPlotSide", width = 400, height = 250)
-  		)
-  	),
-  	column(3,
-  	       
-  	       selectizeInput("fam1", label="Family", c("Search here...", familyNames)),
-  	       selectizeInput("gen1", label="Genus", c("Search here...", genusNames)),
-  	       selectizeInput("spp1", label="Species", c("Search here...", speciesNames))
-  	)
-  ),
-  hr()
+    titlePanel("MARKMYBIRD-O-SPACE"),
+    HTML(paste0("<h4>Visualise and explore the position of ", dim(scores)[1], " bird species (", length(unique(scores$Genus)), " genera) in multidimensional bill morphospace using data crowdsourced from <a href='https://www.markmybird.org/' target='_blank'>MarkMyBird.org</a></h4>", sep="")),
+    hr(),
+    fluidRow(
+        column(7,
+               br(), 
+               ggvisOutput("plot1")
+               
+        ),
+        column(5,
+               h3("Bill viewer"),
+               wellPanel(
+                   rgl::rglwidgetOutput("morphoPlotSide", width = 400, height = 250)
+               )),
+        hr()
+        
+    ),
+    fluidRow(
+        column(4,
+               wellPanel(
+                   h4("Axes of shape variation"),
+                   helpText("Select which axes of bill shape variation to explore"),
+                   selectInput("xaxis", label="X axis", names(scores)[grep("PC", names(scores))], selected="PC1"),
+                   selectInput("yaxis", label="Y axis", names(scores)[grep("PC", names(scores))], selected="PC2")
+               )),
+        column(4,
+               wellPanel(
+                   h4("Morphospace explorer"),
+                   helpText("Investigate how bill shape varies across the chosen region of morphospace"),
+                   sliderInput("xval", label="X value:", min=-0.5, max=0.5, value=0, round=-1),
+                   sliderInput("yval", label="Y value:", min=-0.5, max=0.5, value=0, round=-1),
+                   actionButton("goButton", "Reset all")
+               )
+               
+        ),
+        column(4,
+               wellPanel(
+                   selectizeInput("fam1", label="Family", c("Search here...", familyNames)),
+                   selectizeInput("gen1", label="Genus", c("Search here...", genusNames)),
+                   selectizeInput("spp1", label="Species", c("Search here...", speciesNames))
+               )
+        )
+        
+    )
 )
 
 ############################################################
