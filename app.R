@@ -185,8 +185,8 @@ server <- function(input, output, clientData, session) {
 			add_axis("y", title = input$yaxis) %>%
 			set_options(height=500, duration=0) %>%
 			add_legend("size", title = "Bill size (log)", properties = legend_props(legend=list(y=120))) %>%
-			scale_nominal("stroke", range=c(cols[9], scols)) %>%
-			scale_nominal("fill", range=c(cols[9], fcols))
+			scale_nominal("stroke", range= if(length(scols) == 1){rep(scols, 2)}else{scols}) %>%
+			scale_nominal("fill", range=if(length(fcols) == 1){rep(fcols, 2)}else{fcols})
 	})
 
 	vis %>% bind_shiny("plot1")
