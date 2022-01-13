@@ -162,10 +162,10 @@ server <- function(input, output, clientData, session) {
   		    flabels <- factor(flabels, levels=c(levels(flabels), chosenfams))
   			fcols <- c(fcols, cols[c(1,2,3,5,6,7,8)[as.numeric(names(chosenfams))]])
   		}
-  		if (!is.null(values$clickspp)) {
-  		     slabels[names(baseGroup) == values$clickspp] <- values$clickspp
-    		 slabels <- factor(slabels, levels=c(levels(slabels), values$clickspp))
-    		 scols <- c(scols, plot_cols[seq_along(values$clickspp)])
+  		if (!is.null(values$selected)) {
+  		     slabels[names(baseGroup) == values$selected] <- values$selected
+    		 slabels <- factor(slabels, levels=c(levels(slabels), values$selected))
+    		 scols <- c(scols, plot_cols[seq_along(values$selected)])
     	}
     	values$fgroups <- flabels
     	values$sgroups <- slabels
