@@ -227,25 +227,29 @@ ui <- fluidPage(
         
     ),
     fluidRow(
-        column(4,
+        column(8, 
+               h3("Morphospace navigator"),
+               helpText("Investigate how bill shape varies across axes of shape variation and regions of morphospace"),
+        column(6,
                wellPanel(
                    h4("Axes of shape variation"),
                    helpText("Select which axes of bill shape variation to explore"),
                    selectInput("xaxis", label="X axis", names(scores)[grep("PC", names(scores))], selected="PC1"),
                    selectInput("yaxis", label="Y axis", names(scores)[grep("PC", names(scores))], selected="PC2")
                )),
-        column(4,
+        column(6,
                wellPanel(
-                   h4("Morphospace explorer"),
-                   helpText("Investigate how bill shape varies across the chosen region of morphospace"),
+                   h4("Morphospace region center"),
+                   helpText("Choose the center of the morphospace region to explore"),
                    sliderInput("xval", label="X value:", min=-0.5, max=0.5, value=0, round=-1),
                    sliderInput("yval", label="Y value:", min=-0.5, max=0.5, value=0, round=-1),
                    actionButton("goButton", "Reset all")
                )
                
-        ),
+        )),
         column(4,
                wellPanel(
+                   h3("Taxonomic navigator"),
                    selectInput("fam1", label="Select family", choices = c("Search here...", familyNames), 
                                selected = "Search here..."),
                    selectInput("gen1", label="Select genus", choices = c("Search here...", genusNames), 
