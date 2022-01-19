@@ -42,21 +42,21 @@ plot_morphospace <- function(scores, xaxis, yaxis, plot_v_axis, plot_h_axis, plo
 }
 
 # Generate indices and color scale for point fill properties (taxonomic subset)
-morphoplot_fill_params_fn <- function(scores, highlight_fam, highlight_gen,
+morphoplot_fill_params_fn <- function(scores, subset_fam, subset_gen,
                                       fill_grey, fill_pal) {
      
      fill_pts <- rep("All species", nrow(scores))
      names(fill_pts) <- scores$Spp
      
-     fill_pts[scores$Family == highlight_fam] <- highlight_fam
-     fill_pts[scores$Genus == highlight_gen] <- highlight_gen
+     fill_pts[scores$Family == subset_fam] <- subset_fam
+     fill_pts[scores$Genus == subset_gen] <- subset_gen
      
-     flevels <- c("All species", highlight_fam, highlight_gen)
+     flevels <- c("All species", subset_fam, subset_gen)
      flevels <- flevels[flevels != ""]
      fill_pts <- factor(fill_pts, levels = flevels)
      
-     fill_col_select <- c("family", "genus")[c(!is.null(highlight_fam), 
-                                               !is.null(highlight_gen))]
+     fill_col_select <- c("family", "genus")[c(!is.null(subset_fam), 
+                                               !is.null(subset_gen))]
      
      fill_cols <- unname(c(fill_grey, fill_pal[fill_col_select]))
 
@@ -93,3 +93,4 @@ morphoplot_subset_pts <- function(scores, pts) {
     data <- scores[pts != "All species", ]
     data[order(data$pts), ]
 }
+
