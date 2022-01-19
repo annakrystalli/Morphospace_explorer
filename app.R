@@ -1,38 +1,29 @@
-library(RColorBrewer) # # # Install these packages
+# ---- SETUP ----
 library(shiny)
-library(geomorph)
 library(ggvis)
-library(dplyr)
-library(rgl)
 
 options(rgl.printRglwidget = TRUE)
 
+# ---- source functions
 source("R/morphospace_plot.R")
 source("R/3d_beak.R")
 source("R/taxo_select.R")
 
-# Plotting pars:
-so <- readRDS("data/PlottingPars_SideOn.rds")
-td <- readRDS("data/PlottingPars_TopDown.rds")
-
-# Read in data:
-coords <- readRDS("data/Filtered_spp_gpa_2015_11_13.rds")$median.symm.coords
-sliders <- read.csv("data/sliders.csv", header = F)
+# ---- DATA ----
+# ---- Read in & process data
 scores <- read.csv("data/scores.csv", strings = F)
-
-# create taxonomic subset select choices
+# read in and process coordinate data ready for 3d plotting
+data_3d <- data_3d_get(readRDS("data/Filtered_spp_gpa_2015_11_13.rds")$median.symm.coords)
+# plotting pars
+so <- readRDS("data/PlottingPars_SideOn.rds")
+sliders <- read.csv("data/sliders.csv", header = F)
+# taxonomic subset select choice vectors
 familyNames <- sort(scores$Family)
 genusNames <- sort(scores$Genus)
-speciesNames <- sort(setNames(scores$Species, gsub("_", " ", scores$Species))) # %>% as.list()
+speciesNames <- sort(setNames(scores$Species, gsub("_", " ", scores$Species)))
 
-# process coordinate data ready for 3d plotting
-data_3d <- data_3d_get(coords)
 
-# Plotting cols:
-#cols <- c(brewer.pal(9, name="Set1")[9], brewer.pal(9, name="Set1")[4], brewer.pal(9, name="Set1")[2], brewer.pal(9, name="Set1")[1], brewer.pal(9, name="Set1")[5], brewer.pal(9, name="Set1")[3])
-cols <- c(RColorBrewer::brewer.pal(9, name="Blues"))
-
-# colors
+# ---- Plotting color palettes:
 #fill_pal <- setNames(MetBrewer::met.brewer(name="Veronese", n = 20)[c(13, 20)], c("family", "genus"))
 fill_pal <- setNames(MetBrewer::met.brewer(name="Signac", n = 20)[c(5, 15)], c("family", "genus"))
 fill_grey <- RColorBrewer::brewer.pal(9, name="Set1")[9]
@@ -40,10 +31,7 @@ fill_grey <- RColorBrewer::brewer.pal(9, name="Set1")[9]
 stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = 8)[c(1, 4, 3, 7, 6, 2, 5, 8)]
 stroke_grey <- RColorBrewer::brewer.pal(8, name="Dark2")[8]
 
-
-
-
-# Create reative values object:
+# ---- Reactive values
 values <- reactiveValues()
 values$clickspp <- NULL
 values$last_selection <- NULL
@@ -52,59 +40,64 @@ values$plot3d <- NULL
 values$plot_v_axis <- NULL
 values$plot_h_axis <- NULL
 values$plot_centre <- NULL
-values$highlight_fam <- NULL
-values$highlight_gen <- NULL
+values$subset_fam <- NULL
+values$subset_gen <- NULL
 
-
+# Morphospace plot tooltip function
 clickFunc <- function(x) {
     if(is.null(x)) return(NULL)
     values$clickspp <- x$Spp
-    paste0("<b>", scores$English[scores$Spp==x$Spp], "</b><br><i>", 
-           gsub("_"," ",x$Spp), "</i><br><a href='https://www.google.com/search?q=", 
-           gsub("_"," ",x$Spp), "' target='_blank'>Search this species</a>") # Add tbm=isch& for image search
+    paste0("<b>", scores$English[scores$Spp==x$Spp], 
+           "</b><br><i>", gsub("_"," ",x$Spp), 
+           "</i><br><a href='https://www.google.com/search?q=", 
+           gsub("_"," ",x$Spp), 
+           "' target='_blank'>Search this species</a>") 
 }
+
 ############################################################
-
-##########
-# SERVER #
-##########
-
+## ---- SERVER --------------------------------------------
 server <- function(input, output, clientData, session) {
-    
-    observe({
+    # ---- OBSERVERS ----
+    # ---- Update morphospace axes ranges in response to changes in axes variables ----
+    observeEvent(input$xaxis, {
         updateSliderInput(session, "xval", label = "X value:", 
-                          min=round(min(scores[,input$xaxis]),2), 
-                          max=round(max(scores[,input$xaxis]),2), value=0)
+                          min = round(min(scores[,input$xaxis]),2), 
+                          max = round(max(scores[,input$xaxis]),2), value = 0)
+    }, ignoreInit = TRUE)
+    
+    observeEvent(input$yaxis, {
         updateSliderInput(session, "yval", label = "Y value:", 
-                          min=round(min(scores[,input$yaxis]),2), 
-                          max=round(max(scores[,input$yaxis]),2), value=0)
-    })
+                          min = round(min(scores[,input$yaxis]),2), 
+                          max = round(max(scores[,input$yaxis]),2), value = 0)
+    }, ignoreInit = TRUE)
     
-    
+    # ---- Update taxonomic select input choices in response to changes in taxo subset ----
     observeEvent(input$fam1, {
         
-        values$highlight_fam <- if(input$fam1 == "Search here..."){NULL}else{input$fam1}
-        values$highlight_gen <- NULL
+        values$subset_fam <- if(input$fam1 == "Search here..."){NULL}else{input$fam1}
+        values$subset_gen <- NULL
         
         updateSelectInput(session, "gen1", label = "Select genus", 
                           c("Search here...", 
-                            get_genus_options(scores, values$highlight_fam)), 
+                            get_genus_options(scores, values$subset_fam)), 
                           "Search here...")
         updateSelectInput(session, "spp1", label = "Select species", 
                           c("Search here...", 
-                            get_spp_options(scores, values$highlight_fam, values$highlight_gen)), 
+                            get_spp_options(scores, values$subset_fam, values$subset_gen)), 
                           "Search here...")
     }, ignoreInit = TRUE)
     
     observeEvent(input$gen1, {
-        values$highlight_gen <- if(input$gen1 == "Search here..."){NULL}else{input$gen1}
+        values$subset_gen <- if(input$gen1 == "Search here..."){NULL}else{input$gen1}
         updateSelectInput(session, "spp1", label="Select species", 
                           c("Search here...", 
-                            get_spp_options(scores, req(values$highlight_fam), 
-                                            req(values$highlight_gen))), 
+                            get_spp_options(scores, req(values$subset_fam), 
+                                            req(values$subset_gen))), 
                           "Search here...")
     }, ignoreInit = TRUE)
     
+    # ---- Update selected and last_selection of spp in response to click on 
+    # morphospace plot or taxo selection ----
     observeEvent(c(input$spp1, values$clickspp), {
         species_inputs <- c(input$spp1[input$spp1 != "Search here..."], 
                             values$clickspp)
@@ -118,14 +111,9 @@ server <- function(input, output, clientData, session) {
         }
     })
     
-    # observeEvent(c(input$xval, input$yval, input$xaxis, input$yaxis) , {
-    #     values$plot_v_axis <- data.frame(X = c(input$xval, input$xval), 
-    #                                      Y = c(min(scores[,input$yaxis]), max(scores[,input$yaxis])))
-    #     values$plot_h_axis <- data.frame(X = c(min(scores[,input$xaxis]), max(scores[,input$xaxis])), 
-    #                                      Y = c(input$yval, input$yval))
-    #     values$plot_centre <- data.frame(X = c(input$xval),Y = c(input$yval))
-    # }, ignoreNULL = FALSE)
-    # 
+    # ---- REACTIVES ----
+    # ---- 3D Beak rgl scene ----
+    # New scene & update ref beak in response to changes in morphospace centre
     open_3d_ref_beak <- eventReactive(c(input$xval, input$yval), {
         
         rgl::close3d()
@@ -148,18 +136,22 @@ server <- function(input, output, clientData, session) {
         
     })
     
+    # Add 3d beak of last selected species
     add_selected_3d_beak <- eventReactive(values$last_selection, {
         
         plot_selected_beak(data_3d, selected_species = req(values$last_selection),
                            sliders = sliders, colour = stroke_pal[length(req(values$selected)) %% 8])
     })
     
+    # ---- Morphospace params ----
+    # Update indices and color scale for point fill properties (taxonomic subset)
     get_morphoplot_fill_params <- reactive({
-        morphoplot_fill_params_fn(scores, values$highlight_fam, 
-                                  values$highlight_gen,
+        morphoplot_fill_params_fn(scores, values$subset_fam, 
+                                  values$subset_gen,
                                   fill_grey, fill_pal)
     })
     
+    # Update indices and color scale for point stroke properties (selected species)
     get_morphoplot_stroke_params <- reactive({
         morphoplot_stroke_params_fn(scores, values$selected,
                                     stroke_grey,
@@ -190,7 +182,7 @@ server <- function(input, output, clientData, session) {
             add_tooltip(clickFunc, "click")
     })
     
-    vis %>% bind_shiny("plot1")
+    vis %>% ggvis::bind_shiny("plot1")
     
     output$morphoPlotSide <- rgl::renderRglwidget({
         
@@ -212,10 +204,7 @@ server <- function(input, output, clientData, session) {
 }
 
 ############################################################
-
-######
-# UI #
-######
+## ---- UI --------------------------------------------
 
 ui <- fluidPage(
     titlePanel("MARKMYBIRD-O-SPACE"),
@@ -225,8 +214,8 @@ ui <- fluidPage(
     hr(),
     fluidRow(
         column(7,
-               br(), 
-               ggvisOutput("plot1")
+               h3("Morphospace viewer"),
+               ggvis::ggvisOutput("plot1")
                
         ),
         column(5,
