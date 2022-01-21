@@ -248,7 +248,8 @@ server <- function(input, output, clientData, session) {
                          plot_centre = values$plot_centre, 
                          stroke_params = stroke_params, fill_params = fill_params,
                          font_size = morphoplot_font_size)  %>%
-            add_tooltip(clickFunc, "click")
+            add_tooltip(clickFunc, "click") %>%
+            set_options(width = "auto", resizable=FALSE)
     })
     
     vis %>% ggvis::bind_shiny("morphospace-plot")
