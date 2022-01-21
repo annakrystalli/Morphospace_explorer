@@ -2,12 +2,13 @@
 library(shiny)
 library(ggvis)
 
-options(rgl.printRglwidget = TRUE)
+options(rgl.printRglwidget = FALSE, rgl.useNULL = TRUE)
 
 # ---- source functions
 source("R/morphospace_plot.R")
 source("R/3d_beak.R")
 source("R/taxo_select.R")
+source("R/theme.R")
 
 # ---- DATA ----
 # ---- Read in & process data
@@ -20,16 +21,22 @@ sliders <- read.csv("data/sliders.csv", header = F)
 # taxonomic subset select choice vectors
 familyNames <- sort(scores$Family)
 genusNames <- sort(scores$Genus)
-speciesNames <- sort(setNames(scores$Species, gsub("_", " ", scores$Species)))
+speciesNames <- sort(scores$Spp2)
 
+max_selected <- 6
 
 # ---- Plotting color palettes:
 #fill_pal <- setNames(MetBrewer::met.brewer(name="Veronese", n = 20)[c(13, 20)], c("family", "genus"))
 fill_pal <- setNames(MetBrewer::met.brewer(name="Signac", n = 20)[c(5, 15)], c("family", "genus"))
 fill_grey <- RColorBrewer::brewer.pal(9, name="Set1")[9]
 
-stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = 8)[c(1, 4, 3, 7, 6, 2, 5, 8)]
+#stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = 8)[c(1, 4, 3, 7, 6, 2, 5, 8)]
+set.seed(20220121)
+stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = max_selected)[sample(1:max_selected, max_selected)]
 stroke_grey <- RColorBrewer::brewer.pal(8, name="Dark2")[8]
+ref_beak_lwd <- 2
+beak_lwd <- 5
+morphoplot_font_size <- 15
 
 # ---- Reactive values
 values <- reactiveValues()
@@ -42,16 +49,16 @@ values$plot_h_axis <- NULL
 values$plot_centre <- NULL
 values$subset_fam <- NULL
 values$subset_gen <- NULL
+values$max_select_exceeded <- FALSE
 
 # Morphospace plot tooltip function
 clickFunc <- function(x) {
     if(is.null(x)) return(NULL)
-    values$clickspp <- x$Spp
-    paste0("<b>", scores$English[scores$Spp==x$Spp], 
-           "</b><br><i>", gsub("_"," ",x$Spp), 
+    values$clickspp <-  x$Spp2 #gsub(" ","_",x$Spp2)
+    paste0("<b>", scores$English[scores$Spp2==x$Spp2], 
+           "</b><br><i>", x$Spp2, 
            "</i><br><a href='https://www.google.com/search?q=", 
-           gsub("_"," ",x$Spp), 
-           "' target='_blank'>Search this species</a>") 
+          x$Spp2, "' target='_blank'>Search this species</a>") 
 }
 
 ############################################################
@@ -96,6 +103,42 @@ server <- function(input, output, clientData, session) {
                           "Search here...")
     }, ignoreInit = TRUE)
     
+    # ---- Reset events ----
+    # Reset morphospace
+    observeEvent(input$reset_morphospace, {
+        updateSelectInput(session, "xaxis", label="X axis", names(scores)[grep("PC", names(scores))], selected = "PC1")
+        updateSelectInput(session, "yaxis", label="Y axis", names(scores)[grep("PC", names(scores))], selected = "PC2")
+        updateSliderInput(session, "xval", label = "X value:", 
+                          min = round(min(scores[,input$xaxis]),2), 
+                          max = round(max(scores[,input$xaxis]),2), value = 0)
+        updateSliderInput(session, "yval", label = "Y value:", 
+                          min = round(min(scores[,input$yaxis]),2), 
+                          max = round(max(scores[,input$yaxis]),2), value = 0)
+    }, ignoreInit = TRUE)
+    
+    # Reset selected species
+    observeEvent(input$reset_taxo_select, {
+        values$last_selection <- NULL
+        values$selected <- NULL
+        values$max_select_exceeded <- FALSE
+    }, ignoreInit = TRUE)
+    
+    # Reset taxonomic subset
+    observeEvent(input$reset_taxo_subset, {
+        values$subset_fam <- NULL
+        values$subset_gen <- NULL
+        
+        updateSelectInput(session, "fam1", label = "Subset family", 
+                          c("Search here...", familyNames), 
+                          "Search here...")
+        updateSelectInput(session, "gen1", label = "Subset genus", 
+                          c("Search here...", genusNames), 
+                          "Search here...")
+        updateSelectInput(session, "spp1", label = "Select species", 
+                          c("Search here...", speciesNames), 
+                          "Search here...")
+    }, ignoreInit = TRUE)
+    
     # ---- Update selected and last_selection of spp in response to click on 
     # morphospace plot or taxo selection ----
     observeEvent(c(input$spp1, values$clickspp), {
@@ -105,42 +148,67 @@ server <- function(input, output, clientData, session) {
         if(length(species_inputs) > 0){
             select_diff <- species_inputs[!species_inputs %in% values$selected]
             if(length(select_diff) > 0){
-                values$last_selection <- select_diff
-                values$selected <- c(values$selected, values$last_selection)
+                if(length(values$selected) < max_selected){
+                    values$last_selection <- select_diff
+                    values$selected <- c(values$selected, values$last_selection)
+                }else{
+                    values$max_select_exceeded <- TRUE
+                    showNotification(paste0("Maximum number of allowed selected species (", max_selected
+                                            ,") exceeded. Please clear all selected species and start again"),
+                                     type = "warning")
+                }
             }
         }
     })
+    
     
     # ---- REACTIVES ----
     # ---- 3D Beak rgl scene ----
-    # New scene & update ref beak in response to changes in morphospace centre
-    open_3d_ref_beak <- eventReactive(c(input$xval, input$yval), {
-        
+    # New scene & update ref beak in response to changes in morphospace centre or species
+    # selection resets
+    reset_scene <- eventReactive(c(input$xval, input$yval, input$reset_taxo_select),{
         rgl::close3d()
-        rgl::open3d(useNULL = TRUE)
+        rgl::open3d()
         rgl::par3d(so)
         
         plot_ref_beak(data_3d, xaxis = input$xaxis, yaxis = input$yaxis, xval = input$xval, 
-                      yval = input$yval, sliders = sliders, colour = "black")
+                      yval = input$yval, sliders = sliders, colour = "black",
+                      lwd = ref_beak_lwd, alpha = 1)
         
+        rerender_selected_beaks()
     })
     
-    re_add_selected_3d_beaks <- eventReactive(c(input$xval, input$yval), {
-        
+    # rerender any selected beaks but only in response to changes in morphospace centre
+    rerender_selected_beaks <- eventReactive(c(input$xval, input$yval),{
         if(!is.null(values$selected)){
             for(i in seq_along(req(values$selected))){
                 plot_selected_beak(data_3d, selected_species = values$selected[i],
-                                   sliders = sliders, colour = stroke_pal[i %% 8])
+                                   sliders = sliders, colour = stroke_pal[i],
+                                   lwd = beak_lwd, alpha = 1)
             }
+        }
+    })
+    # Add 3d beak of last selected species
+    add_selected_3d_beak <- reactive({
+        
+        if(!is.null(values$last_selection)){
+        plot_selected_beak(data_3d, selected_species = req(values$last_selection),
+                           sliders = sliders, lwd = beak_lwd, alpha = 1,
+                           colour = stroke_pal[length(req(values$selected))])
         }
         
     })
     
-    # Add 3d beak of last selected species
-    add_selected_3d_beak <- eventReactive(values$last_selection, {
+    # Render 3D beak scene
+    render_3dbeak_scene <- reactive({
         
-        plot_selected_beak(data_3d, selected_species = req(values$last_selection),
-                           sliders = sliders, colour = stroke_pal[length(req(values$selected)) %% 8])
+        # open new 3d device (re-evaluated when morphospace params change) and 
+        # add beaks of any already selected species
+        reset_scene()
+        
+        # Add the beak of last selected species
+        add_selected_3d_beak()
+        
     })
     
     # ---- Morphospace params ----
@@ -178,27 +246,21 @@ server <- function(input, output, clientData, session) {
         plot_morphospace(scores, xaxis = input$xaxis, yaxis = input$yaxis,
                          plot_v_axis = values$plot_v_axis, plot_h_axis = values$plot_h_axis,
                          plot_centre = values$plot_centre, 
-                         stroke_params = stroke_params, fill_params = fill_params)  %>%
+                         stroke_params = stroke_params, fill_params = fill_params,
+                         font_size = morphoplot_font_size)  %>%
             add_tooltip(clickFunc, "click")
     })
     
-    vis %>% ggvis::bind_shiny("plot1")
+    vis %>% ggvis::bind_shiny("morphospace-plot")
     
     output$morphoPlotSide <- rgl::renderRglwidget({
         
-        # open new 3d device (re-evaluated when morphospace params change)
-        open_3d_ref_beak()
+        # Render 3D beak scene
+        render_3dbeak_scene()
         
-        # add beaks of any already selected species (run when morphospace params change 
-        # and species already selected)
-        re_add_selected_3d_beaks() 
-        
-        # Add the beak of last selected species
-        add_selected_3d_beak()
-        
-        # embed RGL scene output into html 
+        # embed RGL scene output into html
         rgl::rglwidget(webgl = TRUE)
-        
+    
         
     })
 }
@@ -206,60 +268,89 @@ server <- function(input, output, clientData, session) {
 ############################################################
 ## ---- UI --------------------------------------------
 
-ui <- fluidPage(
-    titlePanel("MARKMYBIRD-O-SPACE"),
-    HTML(paste0("<h4>Visualise and explore the position of ", dim(scores)[1], 
-                " bird species (", length(unique(scores$Genus)), 
-                " genera) in multidimensional bill morphospace using data crowdsourced from <a href='https://www.markmybird.org/' target='_blank'>MarkMyBird.org</a></h4>", sep="")),
-    hr(),
-    fluidRow(
-        column(7,
-               h3("Morphospace viewer"),
-               ggvis::ggvisOutput("plot1")
-               
-        ),
-        column(5,
-               h3("Bill viewer"),
-               wellPanel(
-                   rgl::rglwidgetOutput("morphoPlotSide", width = 500, height = 500)
-               )),
-        hr()
-        
-    ),
-    fluidRow(
-        column(8, 
-               h3("Morphospace navigator"),
-               helpText("Investigate how bill shape varies across axes of shape variation and regions of morphospace"),
-        column(6,
-               wellPanel(
-                   h4("Axes of shape variation"),
-                   helpText("Select which axes of bill shape variation to explore"),
-                   selectInput("xaxis", label="X axis", names(scores)[grep("PC", names(scores))], selected="PC1"),
-                   selectInput("yaxis", label="Y axis", names(scores)[grep("PC", names(scores))], selected="PC2")
-               )),
-        column(6,
-               wellPanel(
-                   h4("Morphospace region center"),
-                   helpText("Choose the center of the morphospace region to explore"),
-                   sliderInput("xval", label="X value:", min=-0.5, max=0.5, value=0, round=-1),
-                   sliderInput("yval", label="Y value:", min=-0.5, max=0.5, value=0, round=-1),
-                   actionButton("goButton", "Reset all")
-               )
-               
-        )),
-        column(4,
-               wellPanel(
-                   h3("Taxonomic navigator"),
-                   selectInput("fam1", label="Select family", choices = c("Search here...", familyNames), 
-                               selected = "Search here..."),
-                   selectInput("gen1", label="Select genus", choices = c("Search here...", genusNames), 
-                               selected = "Search here..."),
-                   selectInput("spp1", label="Select species", choices = c("Search here...", speciesNames),
-                               selected = "Search here...")
-               )
-        )
-        
-    )
+ui <- fluidPage(theme = morphospace_theme,
+                
+                titlePanel(div(column(width = 2, tags$img(src = "TUOS_PRIMARY_LOGO_FULL COLOUR.png", height = "70px")),
+                               column(width = 10, h1("MARKMYBIRD-O-SPACE"))),
+                           windowTitle= "MARKMYBIRD-O-SPACE"),
+                # HTML(paste0("<h4>Visualise and explore the position of ", nrow(scores), 
+                #             " bird species (", length(unique(scores$Genus)), 
+                #             " genera) in multidimensional bill morphospace using data crowdsourced from <a href='https://www.markmybird.org/' target='_blank'>MarkMyBird.org</a></h4>", sep="")),
+                
+                div(h4(paste0("Visualise and explore the position of ", nrow(scores), 
+                              " bird species (", length(unique(scores$Genus)), 
+                              " genera) in multidimensional bill morphospace using data crowdsourced from"),
+                       a("MarkMyBird.org", href="https://www.markmybird.org/", target="_blank"))),
+                hr(),
+                fluidRow(
+                    column(7,
+                           h3("Morphospace viewer"),
+                           ggvis::ggvisOutput("morphospace-plot"),
+                           actionButton("reset_taxo_select", "Reset all selected species"),
+                           br()
+                           
+                    ),
+                    column(5,
+                           h3("Bill viewer"),
+                           wellPanel(
+                               rgl::rglwidgetOutput("morphoPlotSide", width = 500, height = 500)
+                           )),
+                    br()
+                    
+                ),
+                fluidRow(
+                    tabsetPanel(type = "tabs",
+                                tabPanel("Taxonomic navigator",
+                                         #column(4,
+                                         h3("Taxonomic navigator"),
+                                         fluidRow(
+                                         column(5,
+                                                wellPanel(
+                                                    h4("Subset taxonomy"),
+                                                    selectInput("fam1", label="Select family", choices = c("Search here...", familyNames), 
+                                                                selected = "Subset here..."),
+                                                    selectInput("gen1", label="Subset genus", choices = c("Search here...", genusNames), 
+                                                                selected = "Search here..."),
+                                                    actionButton("reset_taxo_subset", "Reset all subsets")),
+                                                br()),
+                                         column(5,
+                                                wellPanel(
+                                                    h4("Select species"),
+                                                    selectInput("spp1", label="Select species", choices = c("Search here...", speciesNames),
+                                                                selected = "Search here..."))
+                                         ),
+                                         column(2)
+                                )),
+                                tabPanel("Morphospace navigator",
+                                         #column(8, 
+                                         h3("Morphospace navigator"),
+                                         helpText("Investigate how bill shape varies across axes of shape variation and regions of morphospace"),
+                                         fluidRow(
+                                             column(4,
+                                                    wellPanel(
+                                                        h4("Axes of shape variation"),
+                                                        helpText("Select which axes of bill shape variation to explore"),
+                                                        selectInput("xaxis", label="X axis", names(scores)[grep("PC", names(scores))], selected="PC1"),
+                                                        selectInput("yaxis", label="Y axis", names(scores)[grep("PC", names(scores))], selected="PC2")
+                                                    )),
+                                             column(8,
+                                                    wellPanel(
+                                                        h4("Morphospace region center"),
+                                                        helpText("Choose the center of the morphospace region to explore"),
+                                                        sliderInput("xval", label="X value:", min=-0.5, max=0.5, value=0, round=-1),
+                                                        sliderInput("yval", label="Y value:", min=-0.5, max=0.5, value=0, round=-1),
+                                                        actionButton("reset_morphospace", "Reset morphospace params")
+                                                    )
+                                             )
+                                         )
+                                )
+                    )
+                    
+                ),
+                fluidRow(
+                    hr(),
+                    helpText("Mark My Bird is part of a European Research Council (ERC) funded project based at the University of Sheffield. The project aims to contribute to our understanding of how and why evolutionary rates vary across the tree of life and what this means for the origins and maintenance of biological diversity. The main museums collections used to date are the NHM bird collections at Natural History Museum at Tring and the Manchester Museum. We are extremely grateful for the time and expertise of the staff at both institutions for their continued support. This website was built by the talented team at The Digital Humanities Institute.")
+                )
 )
 
 ############################################################
@@ -267,5 +358,7 @@ ui <- fluidPage(
 #######
 # RUN #
 #######
-
 shinyApp(ui, server)
+# bslib::run_with_themer(shinyApp(ui, server))
+# profvis({ shinyApp(ui, server)})
+# profvis::profvis({ runApp(list(ui = ui, server = server))})
