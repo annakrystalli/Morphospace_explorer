@@ -37,7 +37,7 @@ plot_morphospace <- function(scores, xaxis, yaxis, plot_v_axis, plot_h_axis, plo
         add_legend("size", title = "Bill size (log)", properties = legend_props(legend = list(y = 0),
                                                                                 labels = list(fontSize = font_size),
                                                                                 title = list(fontSize = font_size + 2)))  %>%
-        add_legend("fill", title = "Highlighted", properties = legend_props(legend = list(y = a),
+        add_legend("fill", title = "Subsetted", properties = legend_props(legend = list(y = a),
                                                                             labels = list(fontSize = font_size),
                                                                             title = list(fontSize = font_size + 2))) %>%
         add_legend("stroke", title = "Selected", properties = legend_props(legend = list(y = (length(fill_params$fill_cols) * b) + a),
