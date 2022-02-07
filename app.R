@@ -372,7 +372,8 @@ ui <- fluidPage(theme = morphospace_theme,
                 ),
                 fluidRow(
                     hr(),
-                    helpText("Mark My Bird is part of a European Research Council (ERC) funded project based at the University of Sheffield. The project aims to contribute to our understanding of how and why evolutionary rates vary across the tree of life and what this means for the origins and maintenance of biological diversity. The main museums collections used to date are the NHM bird collections at Natural History Museum at Tring and the Manchester Museum. We are extremely grateful for the time and expertise of the staff at both institutions for their continued support. This website was built by the talented team at The Digital Humanities Institute.")
+                    helpText("Mark My Bird is part of a European Research Council (ERC) funded project based at the University of Sheffield. The project aims to contribute to our understanding of how and why evolutionary rates vary across the tree of life and what this means for the origins and maintenance of biological diversity. The main museums collections used to date are the NHM bird collections at Natural History Museum at Tring and the Manchester Museum. We are extremely grateful for the time and expertise of the staff at both institutions for their continued support. This website was built by the talented team at The Digital Humanities Institute."),
+                    HTML(markdown::markdownToHTML(text = "[![DOI:10.15131/shef.data.19130714](http://img.shields.io/badge/DOI-10.15131/shef.data.19130714.svg)](https://doi.org/10.15131/shef.data.19130714)"))
                 )
 )
 
