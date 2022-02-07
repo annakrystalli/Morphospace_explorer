@@ -161,7 +161,23 @@ server <- function(input, output, clientData, session) {
         }
     })
     
+    observeEvent(input$morphospaceInfo, {
+        showModal(modalDialog(
+            title = "What does the Morphospace represent?",
+            "Details of the morphospace will go here
+            Here's a new paragraph",
+            easyClose = TRUE
+        ))
+    })
     
+    observeEvent(input$billInfo, {
+        showModal(modalDialog(
+            title = "What does the bill data represent?",
+            "Details of the bill will go here
+            Here's a new paragraph",
+            easyClose = TRUE
+        ))
+    })
     # ---- REACTIVES ----
     # ---- 3D Beak rgl scene ----
     # New scene & update ref beak in response to changes in morphospace centre or species
@@ -286,6 +302,9 @@ ui <- fluidPage(theme = morphospace_theme,
                 fluidRow(
                     column(7,
                            h3("Morphospace viewer"),
+                           actionButton("morphospaceInfo", "Find out more about the morphospace",
+                                        icon = icon("info-circle"),
+                                        class="btn btn-light"),
                            ggvis::ggvisOutput("morphospace-plot"),
                            actionButton("reset_taxo_select", "Reset all selected species"),
                            br()
@@ -293,6 +312,9 @@ ui <- fluidPage(theme = morphospace_theme,
                     ),
                     column(5,
                            h3("Bill viewer"),
+                           actionButton("billInfo", "Find out more about the bill data",
+                                        icon = icon("info-circle"),
+                                        class="btn btn-light"),
                            wellPanel(
                                rgl::rglwidgetOutput("morphoPlotSide", width = 500, height = 500)
                            )),
