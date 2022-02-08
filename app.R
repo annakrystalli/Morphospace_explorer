@@ -286,19 +286,15 @@ server <- function(input, output, clientData, session) {
 ## ---- UI --------------------------------------------
 
 ui <- fluidPage(theme = morphospace_theme,
-                
-                titlePanel(fluidRow(column(width = 2, tags$img(src = "TUOS_PRIMARY_LOGO_FULL COLOUR.png", height = "70px")),
+
+                titlePanel(fluidRow(column(width = 2, tags$img(src = "TUOS_PRIMARY_LOGO_FULL COLOUR.png", width = "100%")),
                                column(width = 10, h1("MARKMYBIRD-O-SPACE", style="margin-top: 0;"), style="display: flex; align-items: center;")),
                            windowTitle= "MARKMYBIRD-O-SPACE"),
-                # HTML(paste0("<h4>Visualise and explore the position of ", nrow(scores), 
-                #             " bird species (", length(unique(scores$Genus)), 
-                #             " genera) in multidimensional bill morphospace using data crowdsourced from <a href='https://www.markmybird.org/' target='_blank'>MarkMyBird.org</a></h4>", sep="")),
-                
-                div(h4(paste0("Visualise and explore the position of ", nrow(scores), 
+
+                div(h3(paste0("Visualise and explore the position of ", nrow(scores), 
                               " bird species (", length(unique(scores$Genus)), 
                               " genera) in multidimensional bill morphospace using data crowdsourced from"),
                        a("MarkMyBird.org", href="https://www.markmybird.org/", target="_blank"))),
-                hr(),
                 fluidRow(
                     column(7,
                            h3("Morphospace viewer"),
