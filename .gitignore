@@ -6,3 +6,5 @@
 attic/*
 publish.R
 rsconnect/*
+data/*
+data-raw/*
