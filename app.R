@@ -46,6 +46,9 @@ clickFunc <- function(x) {
           x$Spp2, "' target='_blank'>Search this species</a>") 
 }
 
+
+#### Styling settings can be found in R/theme.R -----   ####
+
 ############################################################
 ## ---- SERVER --------------------------------------------
 server <- function(input, output, clientData, session) {
