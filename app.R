@@ -161,8 +161,8 @@ server <- function(input, output, clientData, session) {
     observeEvent(input$billInfo, {
         showModal(modalDialog(
             title = "What does the bill data represent?",
-            "Details of the bill will go here
-            Here's a new paragraph",
+            p("Details of the bill will go here"),
+            helpText("Black reference trace represents the bill shape at the current morphospace centre. Use morphospace navigator to compare selected species to reference shapes at different morphospace region centers"),
             easyClose = TRUE
         ))
     })
