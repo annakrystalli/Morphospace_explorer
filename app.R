@@ -273,7 +273,7 @@ server <- function(input, output, clientData, session) {
 ############################################################
 ## ---- UI --------------------------------------------
 
-ui <- fluidPage(theme = morphospace_theme,
+ui <- fluidPage(theme = morphospace_theme, style = "max-width: 95%;",
 
                 titlePanel(fluidRow(column(width = 2, tags$img(src = "TUOS_PRIMARY_LOGO_LINEAR_BLACK.png", width = "100%")),
                                column(width = 10, h1("MARKMYBIRD-O-SPACE", style="margin-top: 0;"), style="display: flex; align-items: center;")),
