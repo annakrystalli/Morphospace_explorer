@@ -11,7 +11,7 @@ stroke_grey <- RColorBrewer::brewer.pal(8, name="Dark2")[8]
 
 # Plot settings
 ref_beak_lwd <- 2
-beak_lwd <- 5
+beak_lwd <- 4
 morphoplot_font_size <- 13
 
 # Theme colours
