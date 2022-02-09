@@ -46,6 +46,11 @@ clickFunc <- function(x) {
           x$Spp2, "' target='_blank'>Search this species</a>") 
 }
 
+jscode <- 
+    "$(function() {
+  $('#morphospace-plot').click(function(){ $('#ggvis-tooltip').hide(); });
+})
+"
 
 #### Styling settings can be found in R/theme.R -----   ####
 
@@ -274,7 +279,7 @@ server <- function(input, output, clientData, session) {
 ## ---- UI --------------------------------------------
 
 ui <- fluidPage(theme = morphospace_theme, style = "max-width: 95%;",
-
+                tags$script(jscode),
                 titlePanel(fluidRow(column(width = 2, tags$img(src = "TUOS_PRIMARY_LOGO_LINEAR_BLACK.png", width = "100%")),
                                column(width = 10, h1("MARKMYBIRD-O-SPACE", style="margin-top: 0;"), style="display: flex; align-items: center;")),
                            windowTitle= "MARKMYBIRD-O-SPACE"),
