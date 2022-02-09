@@ -303,7 +303,7 @@ ui <- fluidPage(theme = morphospace_theme, style = "max-width: 95%;",
                            actionButton("billInfo", "Find out more about the bill data",
                                         icon = icon("info-circle"),
                                         class="btn btn-light"),
-                               rgl::rglwidgetOutput("morphoPlotSide", width = 500, height = 500)
+                               rgl::rglwidgetOutput("morphoPlotSide", width = "auto", height = 500)
                            ),
                     br()
                     
