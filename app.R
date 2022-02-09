@@ -350,10 +350,14 @@ ui <- fluidPage(theme = morphospace_theme,
                     )
                     
                 ),
+                br(),
                 fluidRow(
                     hr(),
+                    helpText("The data displayed is v1 of", em("'Dataset Title'"), a("10.15131/shef.data.19145069", href="https://doi.org/10.15131/shef.data.19145069", target="_blank"), "described in",  em("'Paper Title'"),  a("paper DOI", href="", target="_blank") ),
+                    helpText("The code for this app is published at", a("10.15131/shef.data.19130714", href="https://doi.org/10.15131/shef.data.19130714", target="_blank")),
+                    br(),
                     helpText("Mark My Bird is part of a European Research Council (ERC) funded project based at the University of Sheffield. The project aims to contribute to our understanding of how and why evolutionary rates vary across the tree of life and what this means for the origins and maintenance of biological diversity. The main museums collections used to date are the NHM bird collections at Natural History Museum at Tring and the Manchester Museum. We are extremely grateful for the time and expertise of the staff at both institutions for their continued support. This website was built by the talented team at The Digital Humanities Institute.")#,
-                    #div(HTML(markdown::markdownToHTML(text = "[![DOI:10.15131/shef.data.19130714](http://img.shields.io/badge/DOI-10.15131/shef.data.19130714.svg)](https://doi.org/10.15131/shef.data.19130714)")), style="max-width: 95%;")
+                    
                 )
 )
 
