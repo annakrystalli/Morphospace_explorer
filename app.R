@@ -23,21 +23,6 @@ familyNames <- sort(scores$Family)
 genusNames <- sort(scores$Genus)
 speciesNames <- sort(scores$Spp2)
 
-max_selected <- 6
-
-# ---- Plotting color palettes:
-#fill_pal <- setNames(MetBrewer::met.brewer(name="Veronese", n = 20)[c(13, 20)], c("family", "genus"))
-fill_pal <- setNames(MetBrewer::met.brewer(name="Signac", n = 20)[c(5, 15)], c("family", "genus"))
-fill_grey <- RColorBrewer::brewer.pal(9, name="Set1")[9]
-
-#stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = 8)[c(1, 4, 3, 7, 6, 2, 5, 8)]
-set.seed(20220121)
-stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = max_selected)[sample(1:max_selected, max_selected)]
-stroke_grey <- RColorBrewer::brewer.pal(8, name="Dark2")[8]
-ref_beak_lwd <- 2
-beak_lwd <- 5
-morphoplot_font_size <- 15
-
 # ---- Reactive values
 values <- reactiveValues()
 values$clickspp <- NULL
@@ -54,7 +39,7 @@ values$max_select_exceeded <- FALSE
 # Morphospace plot tooltip function
 clickFunc <- function(x) {
     if(is.null(x)) return(NULL)
-    values$clickspp <-  x$Spp2 #gsub(" ","_",x$Spp2)
+    values$clickspp <-  x$Spp2 
     paste0("<b>", scores$English[scores$Spp2==x$Spp2], 
            "</b><br><i>", x$Spp2, 
            "</i><br><a href='https://www.google.com/search?q=", 
@@ -291,18 +276,22 @@ ui <- fluidPage(theme = morphospace_theme,
                                column(width = 10, h1("MARKMYBIRD-O-SPACE", style="margin-top: 0;"), style="display: flex; align-items: center;")),
                            windowTitle= "MARKMYBIRD-O-SPACE"),
 
-                div(h3(paste0("Visualise and explore the position of ", nrow(scores), 
+                div(h5(paste0("Visualise and explore the position of ", nrow(scores), 
                               " bird species (", length(unique(scores$Genus)), 
                               " genera) in multidimensional bill morphospace using data crowdsourced from"),
                        a("MarkMyBird.org", href="https://www.markmybird.org/", target="_blank"))),
                 fluidRow(
                     column(7,
                            h3("Morphospace viewer"),
+                           fluidRow(
+                               column(
                            actionButton("morphospaceInfo", "Find out more about the morphospace",
                                         icon = icon("info-circle"),
-                                        class="btn btn-light"),
-                           ggvis::ggvisOutput("morphospace-plot"),
+                                        class="btn btn-light"), width = 6),
+                           column(
                            actionButton("reset_taxo_select", "Reset all selected species"),
+                           width = 6)),
+                           ggvis::ggvisOutput("morphospace-plot"),
                            br()
                            
                     ),
@@ -318,9 +307,8 @@ ui <- fluidPage(theme = morphospace_theme,
                 ),
                 fluidRow(
                     tabsetPanel(type = "tabs",
-                                tabPanel("Taxonomic navigator",
+                                tabPanel(h4("Taxonomic navigator"),
                                          #column(4,
-                                         h3("Taxonomic navigator"),
                                          fluidRow(
                                          column(5,
                                                 wellPanel(
@@ -335,14 +323,11 @@ ui <- fluidPage(theme = morphospace_theme,
                                                 wellPanel(
                                                     h4("Select species"),
                                                     selectInput("spp1", label="Select species", choices = c("Search here...", speciesNames),
-                                                                selected = "Search here..."))
-                                         ),
+                                                                selected = "Search here..."))),
                                          column(2)
                                 )),
-                                tabPanel("Morphospace navigator",
-                                         #column(8, 
-                                         h3("Morphospace navigator"),
-                                         helpText("Investigate how bill shape varies across axes of shape variation and regions of morphospace"),
+                                tabPanel(h4("Morphospace navigator"),
+                                         h6("Investigate how bill shape varies across axes of shape variation and regions of morphospace"),
                                          fluidRow(
                                              column(4,
                                                     wellPanel(
