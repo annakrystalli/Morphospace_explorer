@@ -1,19 +1,20 @@
 # ---- Plotting color palettes:
 max_selected <- 6
-#fill_pal <- setNames(MetBrewer::met.brewer(name="Veronese", n = 20)[c(13, 20)], c("family", "genus"))
+
+# Palettes
 fill_pal <- setNames(MetBrewer::met.brewer(name="Signac", n = 20)[c(5, 15)], c("family", "genus"))
 fill_grey <- RColorBrewer::brewer.pal(9, name="Set1")[9]
 
-#stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = 8)[c(1, 4, 3, 7, 6, 2, 5, 8)]
 set.seed(20220121)
 stroke_pal <- MetBrewer::met.brewer(name="Peru1", n = max_selected)[sample(1:max_selected, max_selected)]
 stroke_grey <- RColorBrewer::brewer.pal(8, name="Dark2")[8]
+
+# Plot settings
 ref_beak_lwd <- 2
 beak_lwd <- 5
 morphoplot_font_size <- 13
 
-
-
+# Theme colours
 primary <- fill_pal[1]
 secondary <- fill_pal[2]
 
@@ -35,13 +36,5 @@ morphospace_theme <- bslib::bs_theme(version = 5,
                                      "nav-link-padding-y" = "0rem",
                                      "card-group-margin" = "1rem")
 
-
-# 
-# morphospace_theme <- bslib::bs_theme(version = 5,
-#                                      primary = "#E25A2C",
-#                                      secondary = "#7C417F",
-#                                      warning = "#E25A2C",
-#                                      spacer = "2rem",
-#                                      "nav-tabs-border-color" = "#E25A2C")
 
 #bslib::bs_theme_preview(morphospace_theme)

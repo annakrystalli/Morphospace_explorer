@@ -370,6 +370,3 @@ ui <- fluidPage(theme = morphospace_theme,
 # RUN #
 #######
 shinyApp(ui, server)
-# bslib::run_with_themer(shinyApp(ui, server))
-# profvis({ shinyApp(ui, server)})
-# profvis::profvis({ runApp(list(ui = ui, server = server))})
