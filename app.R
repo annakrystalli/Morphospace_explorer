@@ -5,10 +5,10 @@ library(ggvis)
 options(rgl.printRglwidget = FALSE, rgl.useNULL = TRUE)
 
 # ---- source functions
-source("R/morphospace_plot.R")
-source("R/3d_beak.R")
-source("R/taxo_select.R")
-source("R/theme.R")
+source("R/morphospace_plot.R", local = TRUE)
+source("R/3d_beak.R", local = TRUE)
+source("R/taxo_select.R", local = TRUE)
+source("R/theme.R", local = TRUE)
 
 # ---- DATA ----
 # ---- Read in & process data
@@ -23,29 +23,6 @@ familyNames <- sort(scores$Family)
 genusNames <- sort(scores$Genus)
 speciesNames <- sort(scores$Spp2)
 
-# ---- Reactive values
-values <- reactiveValues()
-values$clickspp <- NULL
-values$last_selection <- NULL
-values$selected <- NULL
-values$plot3d <- NULL
-values$plot_v_axis <- NULL
-values$plot_h_axis <- NULL
-values$plot_centre <- NULL
-values$subset_fam <- NULL
-values$subset_gen <- NULL
-values$max_select_exceeded <- FALSE
-
-# Morphospace plot tooltip function
-clickFunc <- function(x) {
-    if(is.null(x)) return(NULL)
-    values$clickspp <-  x$Spp2 
-    paste0("<b>", scores$English[scores$Spp2==x$Spp2], 
-           "</b><br><i>", x$Spp2, 
-           "</i><br><a href='https://www.google.com/search?q=", 
-          x$Spp2, "' target='_blank'>Search this species</a>") 
-}
-
 jscode <- 
     "$(function() {
   $('#morphospace-plot').click(function(){ $('#ggvis-tooltip').hide(); });
@@ -57,6 +34,30 @@ jscode <-
 ############################################################
 ## ---- SERVER --------------------------------------------
 server <- function(input, output, clientData, session) {
+    
+    # Morphospace plot tooltip function
+    clickFunc <- function(x) {
+        if(is.null(x)) return(NULL)
+        values$clickspp <-  x$Spp2 
+        paste0("<b>", scores$English[scores$Spp2==x$Spp2], 
+               "</b><br><i>", x$Spp2, 
+               "</i><br><a href='https://www.google.com/search?q=", 
+               x$Spp2, "' target='_blank'>Search this species</a>") 
+    }
+    
+    # ---- Reactive values
+    values <- reactiveValues()
+    values$clickspp <- NULL
+    values$last_selection <- NULL
+    values$selected <- NULL
+    values$plot3d <- NULL
+    values$plot_v_axis <- NULL
+    values$plot_h_axis <- NULL
+    values$plot_centre <- NULL
+    values$subset_fam <- NULL
+    values$subset_gen <- NULL
+    values$max_select_exceeded <- FALSE
+    
     # ---- OBSERVERS ----
     # ---- Update morphospace axes ranges in response to changes in axes variables ----
     observeEvent(input$xaxis, {
